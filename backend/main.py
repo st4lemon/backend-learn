@@ -30,3 +30,5 @@ def add_link(site: PostSite, db: Session = Depends(get_db)):
     db.commit()   # saves changes, we have to do this manually because I specified as such
     db.refresh(website) # refreshes changes after db does changes to it (such as generated IDs)
     return {"id": website.id, "name": website.name, "link": website.link, "review": website.review}
+
+
