@@ -1,2 +1,5 @@
 .venv
 install.sh
+
+data/*
+models/*

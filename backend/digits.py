@@ -14,14 +14,18 @@ data_cache = {}
 
 # assume all data is pandas for now
 
-async def process_data(file: UploadFile, filename: str, db: Session):
-    contents = await file.read()
-    with open(f"../data/{filename}.csv", "wb") as f:
-        f.write(contents)
-    df = pd.read_csv(f"../data/{filename}.csv")
-    rows, cols = df.shape
-    update_data(Data(name=filename, filename=f"{filename}.csv", rows=rows, cols=cols, status="done"), db)
-    return {"filename": filename, "rows": rows, "cols": cols, "status": "processed"}
+async def process_data(contents, filename: str, db: Session): 
+    try:
+        with open(f"data/{filename}.csv", "wb") as f:
+            f.write(contents)
+        df = pd.read_csv(f"data/{filename}.csv")
+        rows, cols = df.shape
+        await update_data(Data(name=filename, filename=f"{filename}.csv", rows=rows, cols=cols, status="done"), db)
+        return {"filename": filename, "rows": rows, "cols": cols, "status": "processed"}
+    except Exception as e:
+        print(e)
+        await update_data(Data(name=filename, filename=f"{filename}.csv", rows=0, cols=0, status="error"), db)
+        return {"filename": filename, "rows": 0, "cols": 0, "status": "error"}
 
 async def train_model(filename: str | None = None, test_size: float = 0.2, random_state: int = datetime.now().microsecond):
     if filename:
@@ -32,7 +36,7 @@ async def train_model(filename: str | None = None, test_size: float = 0.2, rando
 
     X_train, X_test, y_train, y_test = train_test_split(data['data'], data['target'], test_size=test_size, random_state=random_state)
     
-    model = sklearn.svm.LinearSVC(dual='auto')
+    model = sklearn.svm.LinearSVC(dual='auto') 
     model.fit(X_train, y_train)
     # save model to models folder
     # use pickle

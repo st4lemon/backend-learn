@@ -1,13 +1,23 @@
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
+import sqlalchemy
+from sqlalchemy import future
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from pydantic import BaseModel
+import asyncpg
+import psycopg2
 
-DATABASE_URL = "postgresql://postgres:password@localhost:5432/backdb"
+DATABASE_URL = "://postgres:password@localhost:5432/backdb"
 
-engine = create_engine(DATABASE_URL) # this is the SQL engine
+engine = create_engine(f"postgresql+psycopg2{DATABASE_URL}") # this is the SQL engine
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False) # this creates the SQL session that I operate with
 Base = declarative_base() # this is the base class for models
+
+async_engine = create_async_engine(f"postgresql+asyncpg{DATABASE_URL}", echo=True)
+AsyncSessionLocal = sessionmaker(bind=async_engine, class_=AsyncSession, expire_on_commit=False)
+
 
 class Website(BaseModel):
     name: str
@@ -19,7 +29,7 @@ class Data(BaseModel):
     filename: str
     rows: int | None = None
     cols: int | None = None
-    status: str # processing, done, error
+    status: str = "processing" # processing, done, error
 
 class WebsiteTable(Base):
     __tablename__ = "websites"
@@ -38,11 +48,11 @@ class DataTable(Base):
     cols = Column(Integer)
     status = Column(String, nullable=False, default="processing") # processing, done, error
 
-class ModelTable(Base):
-    __tablename__ = "models"
-    id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String, nullable=False, index=True)
-    done = Column(Boolean, default=False, nullable=False)
+# class ModelTable(Base):
+#     __tablename__ = "models"
+#     id = Column(Integer, primary_key=True, index=True)
+#     filename = Column(String, nullable=False, index=True)
+#     done = Column(Boolean, default=False, nullable=False)
 
     
 
@@ -56,21 +66,34 @@ def get_db():
     finally:
         db.close()
 
-def insert_data(dat: Data, db: Session):
+def get_async_db():
+    db = AsyncSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+async def insert_data(dat: Data, db: AsyncSession):
     data = DataTable(name=dat.name, filename=dat.filename, rows=dat.rows or 0, cols=dat.cols or 0, status=dat.status or "processing")
     db.add(data)
-    db.commit()
-    db.refresh(data)
-    return data
+    try:
+        await db.commit()
+        await db.refresh(data)
+        return data
+    except IntegrityError as e:
+        await db.rollback()
+        print("Duplicate entry:", e)
+        return None
 
-def update_data(dat: Data, db: Session):
-    data = db.query(DataTable).filter(DataTable.name == dat.name).first()
+async def update_data(dat: Data, db: AsyncSession):
+    stmt = future.select(DataTable).filter(DataTable.name == dat.name)
+    data = (await db.execute(stmt)).scalars().first()
     if data:
         data.rows = dat.rows or data.rows
         data.cols = dat.cols or data.cols
         data.status = dat.status or data.status
-        db.commit()
-        db.refresh(data)
+        await db.commit()
+        await db.refresh(data)
     return data
 
 def insert_website(site: Website, db: Session):

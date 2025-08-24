@@ -24,12 +24,17 @@ def add_link(site: Website, db: Session = Depends(get_db)):
     return {"id": website.id, "name": website.name, "link": website.link, "review": website.review}
 
 @app.post("/data/upload")
-async def upload_data(background_tasks: BackgroundTasks, file: UploadFile = File(...), filename: str = Form(...), db: Session = Depends(get_db)):
+async def upload_data(background_tasks: BackgroundTasks, file: UploadFile = File(...), filename: str = Form(...), db: Session = Depends(get_async_db)):
     # create record
     data = Data(name=filename, filename=f"{filename}.csv")
-    insert_data(data, db)
-    background_tasks.add_task(process_data, file, filename, db)
+    insert = insert_data(data, db)
+    contents = await file.read()
+    if not await insert:
+        return {"error": "Data with this name already exists."}
+    background_tasks.add_task(process_data, contents, filename, db)
     # add to background tasks
     return {"filename": filename, "status": "processing"}
+
+    
 
 
