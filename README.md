@@ -2,7 +2,6 @@
 ## Project Goals
 - First backend application: Learn how to set up APIs with FastAPI, and how to manage a PostgreSQL database
 - Utilize API endpoints and metadata in the database to train, manage, and store trained SKLearn models
-- Deploy API service to a Docker image using GitHub Actions
 - Make considerations for authentication and data validation in order to protect application from harmful public access
 
 ## Installation
