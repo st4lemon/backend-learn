@@ -1,7 +1,11 @@
-from fastapi import FastAPI, File, Depends, Form, BackgroundTasks, UploadFile
+from fastapi import FastAPI, File, Depends, Form, BackgroundTasks, UploadFile, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+
 from .db import *
 from .digits import *
+
+import json
 
 
 async def lifespan(app: FastAPI):
@@ -24,17 +28,43 @@ def add_link(site: Website, db: Session = Depends(get_db)):
     return {"id": website.id, "name": website.name, "link": website.link, "review": website.review}
 
 @app.post("/data/upload")
-async def upload_data(background_tasks: BackgroundTasks, file: UploadFile = File(...), filename: str = Form(...), db: Session = Depends(get_async_db)):
+async def upload_data(background_tasks: BackgroundTasks, filename: str, file: UploadFile = File(...), db: Session = Depends(get_async_db)):
     # create record
     data = Data(name=filename, filename=f"{filename}.csv")
     insert = insert_data(data, db)
     contents = await file.read()
     if not await insert:
-        return {"error": "Data with this name already exists."}
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Data with this name already exists."}
+        )
     background_tasks.add_task(process_data, contents, filename, db)
     # add to background tasks
-    return {"filename": filename, "status": "processing"}
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"filename": filename, "status": "processing"}
+    )
 
+@app.get("/data")
+def get_data(db: Session = Depends(get_db)):
+    ret = get_all_data(db)
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            'data': ret
+        }
+    )
     
-
+@app.get("/data/name")
+def get_data_by_name(dname: str = Form(...), db: Session = Depends(get_db)):
+    print(dname)
+    ret = get_by_name(dname, db)
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            'data': ret
+        }
+    )
 

@@ -19,7 +19,6 @@ async def process_data(contents, filename: str, db: Session):
         with open(f"data/{filename}.csv", "wb") as f:
             f.write(contents)
         df = pd.read_csv(f"data/{filename}.csv")
-
         rows, cols = df.shape
         if 'target' not in df.columns:
             await update_data(Data(name=filename, filename=f"{filename}.csv", rows=rows, cols=cols, status="error", error="No target column provided"), db)

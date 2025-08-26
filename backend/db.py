@@ -47,7 +47,7 @@ class DataTable(Base):
     created = Column(DateTime, nullable=False, default=datetime.now)
     rows = Column(Integer)
     cols = Column(Integer)
-    status = Column(String, nullable=False, default="processing") # processing, done, error
+    status = Column(String(16), nullable=False, default="processing") # processing, done, error
     error = Column(String, default="")
 
 # class ModelTable(Base):
@@ -56,24 +56,22 @@ class DataTable(Base):
 #     filename = Column(String, nullable=False, index=True)
 #     done = Column(Boolean, default=False, nullable=False)
 
-    
-
 def initialize_db():
     Base.metadata.create_all(bind=engine)
 
 def get_db():
     db = SessionLocal()
     try:
-        yield db
+        yield db 
     finally:
         db.close()
 
-def get_async_db():
+async def get_async_db():
     db = AsyncSessionLocal()
     try:
         yield db
     finally:
-        db.close()
+        await db.close()
 
 async def insert_data(dat: Data, db: AsyncSession):
     data = DataTable(name=dat.name, filename=dat.filename, rows=dat.rows or 0, cols=dat.cols or 0, status=dat.status or "processing")
@@ -105,3 +103,14 @@ def insert_website(site: Website, db: Session):
     db.commit()
     db.refresh(website)
     return website
+
+def get_all_data(db: Session):
+    res = db.execute(sqlalchemy.select(DataTable.name, DataTable.rows, DataTable.cols, DataTable.status, DataTable.error)).all()
+    
+    return [dict(r._mapping) for r in res]
+
+def get_by_name(name: str, db: Session):
+    stmt = sqlalchemy.select(DataTable.name, DataTable.rows, DataTable.cols, DataTable.status, DataTable.error).where(DataTable.name == name)
+    res = db.execute(stmt).all()
+    
+    return [dict(r._mapping) for r in res]
