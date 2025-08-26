@@ -30,6 +30,7 @@ class Data(BaseModel):
     rows: int | None = None
     cols: int | None = None
     status: str = "processing" # processing, done, error
+    error: str | None = None
 
 class WebsiteTable(Base):
     __tablename__ = "websites"
@@ -47,6 +48,7 @@ class DataTable(Base):
     rows = Column(Integer)
     cols = Column(Integer)
     status = Column(String, nullable=False, default="processing") # processing, done, error
+    error = Column(String, default="")
 
 # class ModelTable(Base):
 #     __tablename__ = "models"
@@ -92,6 +94,7 @@ async def update_data(dat: Data, db: AsyncSession):
         data.rows = dat.rows or data.rows
         data.cols = dat.cols or data.cols
         data.status = dat.status or data.status
+        data.error = dat.error or data.error
         await db.commit()
         await db.refresh(data)
     return data
