@@ -63,8 +63,15 @@ def train_model(filename: str, db: Session, test_size: float = 0.2, random_state
 
 
 
-async def predict_with_model(filename: str, data: list[list[float]]):
-    # load model from models folder
-    pass 
+def predict_with_model(filename: str, data: list[list[float]]):
+    if filename not in model_cache:
+        model_cache[filename] = jl.load(f"models/{filename}.joblib")
+    model = model_cache[filename]
+
+    res = list(map(str, model.predict(data)))
+    print(res)
+    return res
+    
+
 
 

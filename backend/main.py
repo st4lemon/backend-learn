@@ -127,10 +127,32 @@ def get_models_by_data(dataname: str, db: Session = Depends(get_db)):
 
 @app.post("/model/predict")
 def predict(req: Sample, db: Session = Depends(get_db)):
-    # verify data exists
-    # verify sample has correct number of columns
-    # verify model exists
+    
+    current_model = get_model_by_name(req.model_name, db)
+    if not current_model:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                'error': "Model does not exist"
+            }
+        )
+    
+    data = get_by_name(current_model[0]['datafile'], db)
+    if data[0]['cols']-1 != len(req.features):
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                'error': f"Sample has unexpected columns. Expected: {data[0]['cols']-1}"
+            }
+        )
+    
     # predict
+    res = predict_with_model(req.model_name, [req.features])
 
-    pass
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            'data': res
+        }
+    )
 

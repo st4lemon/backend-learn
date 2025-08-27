@@ -46,7 +46,7 @@ class Model(BaseModel):
     algorithm: str | None = None
 
 class Sample(BaseModel):
-    data_name: str
+    model_name: str
     features: list[float]
 
 class WebsiteTable(Base):
