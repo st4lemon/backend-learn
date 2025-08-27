@@ -38,7 +38,7 @@ async def upload_data(background_tasks: BackgroundTasks, filename: str, file: Up
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"error": "Data with this name already exists."}
         )
-    background_tasks.add_task(process_data, contents, filename, db)
+    background_tasks.add_task(process_data, contents, filename)
     # add to background tasks
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -94,7 +94,7 @@ def init_model_train(background_tasks: BackgroundTasks, data: str, db: Session =
             }
         )
 
-    background_tasks.add_task(train_model, data, db)
+    background_tasks.add_task(train_model, data)
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
