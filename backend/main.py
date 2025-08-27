@@ -105,13 +105,25 @@ def init_model_train(background_tasks: BackgroundTasks, data: str, db: Session =
 
 @app.get("/model")
 def get_models(db: Session = Depends(get_db)):
-    # get all models in list
-    pass
+    ret = get_all_models(db)
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            'data': ret
+        }
+    )
 
 @app.get("/model/data")
-def get_models_by_data(db: Session = Depends(get_db)):
-    # get all models by data name
-    pass
+def get_models_by_data(dataname: str, db: Session = Depends(get_db)):
+    ret = get_model_by_data(dataname, db)
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            'data': ret
+        }
+    )
 
 @app.post("/model/predict")
 def predict(req: Sample, db: Session = Depends(get_db)):

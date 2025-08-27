@@ -4,6 +4,7 @@ import sqlalchemy
 from sqlalchemy import future
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy_utils import database_exists, create_database
 from datetime import datetime
 from pydantic import BaseModel
 import asyncpg
@@ -11,7 +12,13 @@ import psycopg2
 
 DATABASE_URL = "://postgres:password@localhost:5432/backdb"
 
+
+
 engine = create_engine(f"postgresql+psycopg2{DATABASE_URL}") # this is the SQL engine
+
+if not database_exists(engine.url):
+    create_database(engine.url)
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False) # this creates the SQL session that I operate with
 Base = declarative_base() # this is the base class for models
 
@@ -125,6 +132,24 @@ def insert_model(mod: Model, db: Session):
         db.rollback()
         print("Duplicate entry:", e)
         return None
+
+def get_all_models(db: Session):
+    res = db.execute(sqlalchemy.select(ModelTable.name, ModelTable.datafile, ModelTable.algorithm))
+
+    return [dict(r._mapping) for r in res]
+
+def get_model_by_name(name: str, db: Session):
+    stmt = sqlalchemy.select(ModelTable.name, ModelTable.datafile, ModelTable.algorithm).where(ModelTable.name == name)
+    res = db.execute(stmt)
+
+    return [dict(r._mapping) for r in res]
+
+def get_model_by_data(data: str, db: Session):
+    stmt = sqlalchemy.select(ModelTable.name, ModelTable.datafile, ModelTable.algorithm).where(ModelTable.datafile == data)
+    res = db.execute(stmt)
+
+    return [dict(r._mapping) for r in res]
+
 
 def insert_website(site: Website, db: Session):
     website = WebsiteTable(name=site.name, link=site.link, review=site.review)
