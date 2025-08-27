@@ -54,7 +54,7 @@ def train_model(filename: str, db: Session, test_size: float = 0.2, random_state
     if status is None:
         return None
     
-    jl.dump(model, f'{model_name}.joblib')
+    jl.dump(model, f'models/{model_name}.joblib')
     return status
 
 

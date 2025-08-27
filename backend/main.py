@@ -103,3 +103,22 @@ def init_model_train(background_tasks: BackgroundTasks, data: str, db: Session =
         }
     )
 
+@app.get("/model")
+def get_models(db: Session = Depends(get_db)):
+    # get all models in list
+    pass
+
+@app.get("/model/data")
+def get_models_by_data(db: Session = Depends(get_db)):
+    # get all models by data name
+    pass
+
+@app.post("/model/predict")
+def predict(req: Sample, db: Session = Depends(get_db)):
+    # verify data exists
+    # verify sample has correct number of columns
+    # verify model exists
+    # predict
+
+    pass
+

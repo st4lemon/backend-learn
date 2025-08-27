@@ -38,6 +38,10 @@ class Model(BaseModel):
     datafile: str | None = None
     algorithm: str | None = None
 
+class Sample(BaseModel):
+    data_name: str
+    features: list[float]
+
 class WebsiteTable(Base):
     __tablename__ = "websites"
     id = Column(Integer, primary_key=True, index=True)
