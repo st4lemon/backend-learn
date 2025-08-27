@@ -14,7 +14,7 @@ data_cache = {}
 
 # assume all data is pandas for now
 
-async def process_data(contents, filename: str, db: Session): 
+async def process_data(contents, filename: str, db: AsyncSession): 
     try:
         with open(f"data/{filename}.csv", "wb") as f:
             f.write(contents)
@@ -30,19 +30,33 @@ async def process_data(contents, filename: str, db: Session):
         await update_data(Data(name=filename, filename=f"{filename}.csv", rows=0, cols=0, status="error", error="Error occurred during upload"), db)
         return {"filename": filename, "rows": 0, "cols": 0, "status": "error"}
 
-async def train_model(filename: str | None = None, test_size: float = 0.2, random_state: int = datetime.now().microsecond):
-    if filename:
-        # load dataset from data folder, append csv
-        pass
-    else:
-        data = datasets.load_digits()
+def train_model(filename: str, db: Session, test_size: float = 0.2, random_state: int = datetime.now().microsecond):
+    if filename not in data_cache:
+        data_cache[filename] = pd.read_csv(f'data/{filename}.csv')
+    data = data_cache[filename]
 
-    X_train, X_test, y_train, y_test = train_test_split(data['data'], data['target'], test_size=test_size, random_state=random_state)
+
+    X_train, X_test, y_train, y_test = train_test_split(data.drop(columns=['target']), data['target'], test_size=test_size, random_state=random_state)
     
     model = sklearn.svm.LinearSVC(dual='auto') 
     model.fit(X_train, y_train)
     # save model to models folder
     # use pickle
+
+    # put into database
+    model_name = f"{filename}_svm"
+    model_record = Model(
+        name = model_name,
+        datafile = filename, 
+        algorithm = "SVM"
+    )
+    status = insert_model(model_record, db)
+    if status is None:
+        return None
+    
+    jl.dump(model, f'{model_name}.joblib')
+    return status
+
 
 
 async def predict_with_model(filename: str, data: list[list[float]]):

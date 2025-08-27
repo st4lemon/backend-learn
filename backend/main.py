@@ -28,7 +28,7 @@ def add_link(site: Website, db: Session = Depends(get_db)):
     return {"id": website.id, "name": website.name, "link": website.link, "review": website.review}
 
 @app.post("/data/upload")
-async def upload_data(background_tasks: BackgroundTasks, filename: str, file: UploadFile = File(...), db: Session = Depends(get_async_db)):
+async def upload_data(background_tasks: BackgroundTasks, filename: str, file: UploadFile = File(...), db: AsyncSession = Depends(get_async_db)):
     # create record
     data = Data(name=filename, filename=f"{filename}.csv")
     insert = insert_data(data, db)
@@ -65,6 +65,41 @@ def get_data_by_name(dname: str = Form(...), db: Session = Depends(get_db)):
         status_code=status.HTTP_200_OK,
         content={
             'data': ret
+        }
+    )
+
+@app.post("/model/train")
+def init_model_train(background_tasks: BackgroundTasks, data: str, db: Session = Depends(get_db)):
+    # verify data exists
+    current_data = get_by_name(data, db)
+    if not current_data:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                'error': "Data does not exist"
+            }
+        )
+    elif current_data[0]['status'] == 'error':
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                'error': "Data upload encountered an error"
+            }
+        )
+    elif current_data[0]['status'] == 'error':
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                'error': "Data is currently processing, please wait"
+            }
+        )
+
+    background_tasks.add_task(train_model, data, db)
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            'data': data
         }
     )
 

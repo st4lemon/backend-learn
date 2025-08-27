@@ -1,5 +1,5 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy.orm import sessionmaker, declarative_base, Session, relationship
 import sqlalchemy
 from sqlalchemy import future
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -19,6 +19,7 @@ async_engine = create_async_engine(f"postgresql+asyncpg{DATABASE_URL}", echo=Tru
 AsyncSessionLocal = sessionmaker(bind=async_engine, class_=AsyncSession, expire_on_commit=False)
 
 
+
 class Website(BaseModel):
     name: str
     link: str
@@ -31,6 +32,11 @@ class Data(BaseModel):
     cols: int | None = None
     status: str = "processing" # processing, done, error
     error: str | None = None
+
+class Model(BaseModel):
+    name: str | None = None
+    datafile: str | None = None
+    algorithm: str | None = None
 
 class WebsiteTable(Base):
     __tablename__ = "websites"
@@ -50,11 +56,18 @@ class DataTable(Base):
     status = Column(String(16), nullable=False, default="processing") # processing, done, error
     error = Column(String, default="")
 
-# class ModelTable(Base):
-#     __tablename__ = "models"
-#     id = Column(Integer, primary_key=True, index=True)
-#     filename = Column(String, nullable=False, index=True)
-#     done = Column(Boolean, default=False, nullable=False)
+    models = relationship("ModelTable", back_populates="data")
+
+class ModelTable(Base):
+    __tablename__ = "models"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    datafile = Column(String, ForeignKey('data.name'))
+    created = Column(DateTime, nullable=False, default=datetime.now)
+    algorithm = Column(String, nullable=False)
+
+    data = relationship("DataTable", back_populates="models")
+
 
 def initialize_db():
     Base.metadata.create_all(bind=engine)
@@ -96,6 +109,18 @@ async def update_data(dat: Data, db: AsyncSession):
         await db.commit()
         await db.refresh(data)
     return data
+
+def insert_model(mod: Model, db: Session):
+    model = ModelTable(name=mod.name, datafile=mod.datafile, algorithm=mod.algorithm)
+    db.add(model)
+    try:
+        db.commit()
+        db.refresh(model)
+        return model
+    except IntegrityError as e:
+        db.rollback()
+        print("Duplicate entry:", e)
+        return None
 
 def insert_website(site: Website, db: Session):
     website = WebsiteTable(name=site.name, link=site.link, review=site.review)
